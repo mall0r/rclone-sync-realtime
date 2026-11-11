@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Install the real-time rclone sync watcher as a systemd user service.
+# Install the periodic rclone sync as a systemd user service.
 #
 set -euo pipefail
 
@@ -10,7 +10,8 @@ SYNC_DIR="${SYNC_DIR:-$HOME/SyncDrive}"
 RCLONE_REMOTE="${RCLONE_REMOTE:-}"
 KEEP_BACKUPS="${KEEP_BACKUPS:-4}"
 LOG_FILE="${LOG_FILE:-$HOME/.local/share/rclone-sync-realtime.log}"
-DEBOUNCE="${DEBOUNCE:-10}"
+INTERVAL="${INTERVAL:-300}"
+CHECKSUM="${CHECKSUM:-1}"
 START_SERVICE=1
 
 UNIT_NAME="rclone-sync-realtime.service"
@@ -29,16 +30,21 @@ Usage: ./install.sh --remote REMOTE:PATH [options]
 
 Options:
   --remote REMOTE:PATH  rclone destination (required), e.g. "gdrive:SyncDrive"
-  --sync-dir DIR        Local folder to watch (default: ~/SyncDrive)
+  --sync-dir DIR        Local folder to sync (default: ~/SyncDrive)
   --keep N              Number of backup versions to keep (default: 4)
+  --interval N          Seconds between syncs (default: 300)
   --log-file FILE       Log file
                         (default: ~/.local/share/rclone-sync-realtime.log)
-  --debounce N          Seconds to wait after a change (default: 10)
+  --checksum            Compare content hashes (default)
+  --no-checksum         Compare size + mtime instead (rclone default)
   --no-start            Install and enable, but do not start the service now
   -h, --help            Show this help
 
 The same settings can be provided as environment variables:
-RCLONE_REMOTE, SYNC_DIR, KEEP_BACKUPS, LOG_FILE, DEBOUNCE.
+RCLONE_REMOTE, SYNC_DIR, KEEP_BACKUPS, LOG_FILE, INTERVAL, CHECKSUM.
+
+The sync runs immediately on start, then every --interval seconds. On stop it
+runs a final sync.
 EOF
 }
 
@@ -52,14 +58,16 @@ expand_path() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --remote)     RCLONE_REMOTE="$2"; shift 2 ;;
-        --sync-dir)   SYNC_DIR="$2"; shift 2 ;;
-        --keep)       KEEP_BACKUPS="$2"; shift 2 ;;
-        --log-file)   LOG_FILE="$2"; shift 2 ;;
-        --debounce)   DEBOUNCE="$2"; shift 2 ;;
-        --no-start)   START_SERVICE=0; shift ;;
-        -h|--help)    usage; exit 0 ;;
-        *)            die "unknown option: $1 (use --help)" ;;
+        --remote)          RCLONE_REMOTE="$2"; shift 2 ;;
+        --sync-dir)        SYNC_DIR="$2"; shift 2 ;;
+        --keep)            KEEP_BACKUPS="$2"; shift 2 ;;
+        --interval)        INTERVAL="$2"; shift 2 ;;
+        --log-file)        LOG_FILE="$2"; shift 2 ;;
+        --checksum)        CHECKSUM=1; shift ;;
+        --no-checksum)     CHECKSUM=0; shift ;;
+        --no-start)        START_SERVICE=0; shift ;;
+        -h|--help)         usage; exit 0 ;;
+        *)                 die "unknown option: $1 (use --help)" ;;
     esac
 done
 
@@ -70,16 +78,17 @@ if [[ $(id -u) -eq 0 ]]; then
     die "run as your normal user, not as root (this installs systemd --user units)"
 fi
 
-command -v systemctl    >/dev/null || die "systemd (systemctl) is required"
-command -v rclone       >/dev/null || die "rclone not found; install rclone first"
-command -v inotifywait  >/dev/null || die "inotifywait not found; install inotify-tools"
+command -v systemctl >/dev/null || die "systemd (systemctl) is required"
+command -v rclone    >/dev/null || die "rclone not found; install rclone first"
+command -v flock     >/dev/null || die "flock not found; install util-linux"
 
 [[ -n "$RCLONE_REMOTE" ]] || \
-    die "--remote is required, e.g. --remote 'gdrive:SyncDrive'"
+    die "--remote is required, e.g. --remote 'Gdrive:SyncDrive'"
 [[ "$RCLONE_REMOTE" == *:* ]] || \
     die "invalid remote '$RCLONE_REMOTE'; expected REMOTE:PATH"
 [[ "$KEEP_BACKUPS" =~ ^[1-9][0-9]*$ ]] || die "--keep must be a positive integer"
-[[ "$DEBOUNCE" =~ ^[0-9]+$ ]] || die "--debounce must be a non-negative integer"
+[[ "$INTERVAL" =~ ^[1-9][0-9]*$ ]] || die "--interval must be a positive integer"
+[[ "$CHECKSUM" =~ ^[01]$ ]] || die "CHECKSUM must be 0 or 1"
 
 remote="${RCLONE_REMOTE%%:*}"
 rclone listremotes 2>/dev/null | grep -qxF "${remote}:" || \
@@ -98,7 +107,8 @@ render() {
         -e "s|@BACKUP_ROOT@|$BACKUP_ROOT|g" \
         -e "s|@KEEP_BACKUPS@|$KEEP_BACKUPS|g" \
         -e "s|@LOG_FILE@|$LOG_FILE|g" \
-        -e "s|@DEBOUNCE@|$DEBOUNCE|g" \
+        -e "s|@INTERVAL@|$INTERVAL|g" \
+        -e "s|@CHECKSUM@|$CHECKSUM|g" \
         -e "s|@SCRIPT_PATH@|$SYNC_SCRIPT|g" \
         "$src" > "$dst"
 }
@@ -136,10 +146,12 @@ cat <<EOF
 
 Installation complete.
 
-  Watched folder : $SYNC_DIR
+  Synced folder  : $SYNC_DIR
   rclone remote  : $RCLONE_REMOTE
   Backup root    : $BACKUP_ROOT
   Keep versions  : $KEEP_BACKUPS
+  Interval       : ${INTERVAL}s
+  Checksum       : $([[ "$CHECKSUM" -eq 1 ]] && echo "yes (--checksum)" || echo "no (size+mtime)")
   Log file       : $LOG_FILE
 
   Service        : systemctl --user status rclone-sync-realtime

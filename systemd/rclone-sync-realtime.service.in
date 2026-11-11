@@ -1,7 +1,5 @@
 [Unit]
-Description=Real-time rclone sync with versioned backups
-After=network-online.target
-Wants=network-online.target
+Description=Periodic rclone sync with versioned backups
 StartLimitIntervalSec=300
 StartLimitBurst=15
 
@@ -12,10 +10,15 @@ Environment="RCLONE_REMOTE=@RCLONE_REMOTE@"
 Environment="BACKUP_ROOT=@BACKUP_ROOT@"
 Environment="KEEP_BACKUPS=@KEEP_BACKUPS@"
 Environment="LOG_FILE=@LOG_FILE@"
-Environment="DEBOUNCE=@DEBOUNCE@"
+Environment="INTERVAL=@INTERVAL@"
+Environment="CHECKSUM=@CHECKSUM@"
 ExecStart="@SCRIPT_PATH@"
 Restart=always
 RestartSec=15
+# SIGTERM makes the script finish the current sync and run a final one.
+KillSignal=SIGTERM
+KillMode=mixed
+TimeoutStopSec=180
 
 [Install]
 WantedBy=default.target
