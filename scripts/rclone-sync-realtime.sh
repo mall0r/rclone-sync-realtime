@@ -50,7 +50,9 @@ prune_backups() {
     local old
     for old in "${dirs[@]:KEEP_BACKUPS}"; do
         log "pruning old backup: $old"
-        rclone purge "$BACKUP_ROOT/$old" >>"$LOG_FILE" 2>&1 \
+        # Delete permanently instead of moving to the remote's trash, so the
+        # space is freed immediately and the trash does not grow forever.
+        rclone purge "$BACKUP_ROOT/$old" --drive-use-trash=false >>"$LOG_FILE" 2>&1 \
             || log "failed to prune backup: $old"
     done
 }

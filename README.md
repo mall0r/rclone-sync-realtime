@@ -112,6 +112,10 @@ After each sync the script lists the backup folders, sorts them by name
 matching `YYYYMMDD-HHMMSS` are candidates, so unrelated folders are never
 touched.
 
+Pruned versions are deleted **permanently** on Google Drive
+(`--drive-use-trash=false`), so the space is freed immediately instead of
+staying in the Drive trash for 30 days.
+
 A backup folder is created only when a sync actually overwrites or deletes a
 file. If nothing changes, no new version appears.
 
