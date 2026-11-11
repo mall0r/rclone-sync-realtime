@@ -1,0 +1,21 @@
+[Unit]
+Description=Real-time rclone sync with versioned backups
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=15
+
+[Service]
+Type=simple
+Environment="SYNC_DIR=@SYNC_DIR@"
+Environment="RCLONE_REMOTE=@RCLONE_REMOTE@"
+Environment="BACKUP_ROOT=@BACKUP_ROOT@"
+Environment="KEEP_BACKUPS=@KEEP_BACKUPS@"
+Environment="LOG_FILE=@LOG_FILE@"
+Environment="DEBOUNCE=@DEBOUNCE@"
+ExecStart="@SCRIPT_PATH@"
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=default.target

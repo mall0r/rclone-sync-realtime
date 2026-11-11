@@ -1,0 +1,18 @@
+# Runtime data
+*.log
+backup/
+
+# Secrets and machine-specific configuration
+rclone.conf
+rclone.conf.bak*
+.env
+*.secret
+*.pem
+*.key
+
+# Editors / OS
+.DS_Store
+._*
+Thumbs.db
+.idea/
+.vscode/
