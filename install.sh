@@ -38,7 +38,7 @@ Usage: ./install.sh --remote REMOTE:PATH [options]
 Options:
   --remote REMOTE:PATH  rclone destination (required), e.g. "Gdrive:SyncDrive"
   --sync-dir DIR        Local folder to sync (default: ~/SyncDrive)
-  --keep N              Number of backup versions to keep (default: 4)
+  --keep N              Backup versions to keep per top-level entry (default: 4)
   --interval N          Seconds between syncs (default: 300)
   --log-file FILE       Log file
                         (default: ~/.local/share/rclone-sync-realtime.log)
@@ -199,7 +199,7 @@ Installation complete.
   Synced folder  : $SYNC_DIR
   rclone remote  : $RCLONE_REMOTE
   Backup root    : $BACKUP_ROOT
-  Keep versions  : $KEEP_BACKUPS
+  Keep versions  : $KEEP_BACKUPS per top-level entry
   Interval       : ${INTERVAL}s
   Checksum       : $([[ "$CHECKSUM" -eq 1 ]] && echo "yes (--checksum)" || echo "no (size+mtime)")
   Log file       : $LOG_FILE
