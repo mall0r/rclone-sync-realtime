@@ -2,6 +2,7 @@
 Description=Periodic rclone sync with versioned backups
 StartLimitIntervalSec=300
 StartLimitBurst=15
+Before=@BEFORE_UNIT@
 
 [Service]
 Type=simple

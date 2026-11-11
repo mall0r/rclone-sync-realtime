@@ -1,0 +1,27 @@
+[Unit]
+Description=Final rclone sync before shutdown/reboot
+# Starts after multi-user and the network, so it is stopped before both on
+# shutdown (units stop in reverse start order). ExecStop blocks shutdown until
+# the sync finishes or TimeoutStopSec is reached.
+After=multi-user.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=@USER@
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="HOME=@HOME@"
+Environment="SYNC_DIR=@SYNC_DIR@"
+Environment="RCLONE_REMOTE=@RCLONE_REMOTE@"
+Environment="BACKUP_ROOT=@BACKUP_ROOT@"
+Environment="KEEP_BACKUPS=@KEEP_BACKUPS@"
+Environment="LOG_FILE=@LOG_FILE@"
+Environment="CHECKSUM=@CHECKSUM@"
+Environment="LOCK_WAIT=300"
+ExecStart=/bin/true
+ExecStop=-@SCRIPT_PATH@ --once
+TimeoutStopSec=300
+
+[Install]
+WantedBy=multi-user.target

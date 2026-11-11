@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# Run a final rclone sync before the system suspends or hibernates.
+# systemd waits for every hook in this directory to finish before entering
+# sleep, so the suspend is delayed until the sync completes.
+#
+# user.slice is frozen while hooks run, so this spawns a new process in the
+# system slice as the target user (setpriv does not use PAM).
+#
+case "$1" in
+    pre)
+        exec /usr/bin/timeout 300 /usr/bin/setpriv \
+            --reuid=@UID@ --regid=@GID@ --init-groups \
+            /usr/bin/env \
+            PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+            HOME=@HOME@ \
+            SYNC_DIR=@SYNC_DIR@ \
+            RCLONE_REMOTE=@RCLONE_REMOTE@ \
+            BACKUP_ROOT=@BACKUP_ROOT@ \
+            KEEP_BACKUPS=@KEEP_BACKUPS@ \
+            LOG_FILE=@LOG_FILE@ \
+            CHECKSUM=@CHECKSUM@ \
+            LOCK_WAIT=300 \
+            @SCRIPT_PATH@ --once
+        ;;
+esac
+
+exit 0
